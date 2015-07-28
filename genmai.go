@@ -122,6 +122,64 @@ func (db *DB) Select(output interface{}, args ...interface{}) (err error) {
 	return nil
 }
 
+func (db *DB) SelectSql(output interface{}, query string, args ...interface{}) (err error) {
+	defer func() {
+		if e := recover(); e != nil {
+			buf := make([]byte, 4096)
+			n := runtime.Stack(buf, false)
+			err = fmt.Errorf("%v\n%v", e, string(buf[:n]))
+		}
+	}()
+	rv := reflect.ValueOf(output)
+	if rv.Kind() != reflect.Ptr {
+		return fmt.Errorf("Select: first argument must be a pointer")
+	}
+	for rv.Kind() == reflect.Ptr {
+		rv = rv.Elem()
+	}
+	var tableName string
+	var selectFunc selectFunc
+	ptrN := 0
+	switch rv.Kind() {
+	case reflect.Slice:
+		t := rv.Type().Elem()
+		for ; t.Kind() == reflect.Ptr; ptrN++ {
+			t = t.Elem()
+		}
+		if t.Kind() != reflect.Struct {
+			return fmt.Errorf("Select: argument of slice must be slice of struct, but %v", rv.Type())
+		}
+		if tableName == "" {
+			tableName = db.tableName(t)
+		}
+		selectFunc = db.selectToSlice
+	case reflect.Invalid:
+		return fmt.Errorf("Select: nil pointer dereference")
+	default:
+		if tableName == "" {
+			return fmt.Errorf("Select: From statement must be given if any Function is given")
+		}
+		selectFunc = db.selectToValue
+	}
+
+	stmt, err := db.prepare(query)
+	if err != nil {
+		return err
+	}
+	defer stmt.Close()
+	rows, err := stmt.Query(args...)
+	if err != nil {
+		return err
+	}
+	defer rows.Close()
+	value, err := selectFunc(rows, rv.Type())
+	if err != nil {
+		return err
+	}
+	rv.Set(value)
+	return nil
+}
+
 // From returns a "FROM" statement.
 // A table name will be determined from name of struct of arg.
 // If arg argument is not struct type, it panics.

@@ -3213,3 +3213,30 @@ func TestDB_Rollback(t *testing.T) {
 		}
 	}()
 }
+
+func Test_SelectSql(t *testing.T) {
+	// SELECT * FROM test_model;
+	func() {
+		db := newTestDB(t)
+		defer db.Close()
+		var actual []testModel
+		var query = "SELECT * FROM test_model"
+		if err := db.SelectSql(&actual, query); err != nil {
+			t.Fatal(err)
+		}
+		expected := []testModel{
+			{1, "test1", "addr1"},
+			{2, "test2", "addr2"},
+			{3, "test3", "addr3"},
+			{4, "other", "addr4"},
+			{5, "other", "addr5"},
+			{6, "dup", "dup_addr"},
+			{7, "dup", "dup_addr"},
+			{8, "other1", "addr8"},
+			{9, "other2", "addr9"},
+		}
+		if !reflect.DeepEqual(actual, expected) {
+			t.Errorf("Expect %v, but %v", expected, actual)
+		}
+	}()
+}
