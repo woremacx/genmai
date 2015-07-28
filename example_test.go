@@ -5,7 +5,7 @@ import (
 	"log"
 
 	_ "github.com/mattn/go-sqlite3"
-	"github.com/naoina/genmai"
+	"github.com/woremacx/genmai"
 )
 
 type TestModel struct {

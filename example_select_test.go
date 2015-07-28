@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/naoina/genmai"
+	"github.com/woremacx/genmai"
 )
 
 type M2 struct {
